@@ -55,19 +55,19 @@ impl Handler for Client {
 }
 
 pub struct PortForwarder {
-    remote_ip: &'static str,
+    remote_ip: String,
     remote_port: u32,
     handle: Handle<Client>,
-    local_addr: &'static str,
+    local_addr: String,
 }
-
+    
 impl PortForwarder {
     pub async fn new(
-        ssh_host: &'static str,
-        ssh_user: &'static str,
-        ssh_password: &'static str,
-        local_addr: &'static str,
-        remote_ip: &'static str,
+        ssh_host: String,
+        ssh_user: String,
+        ssh_password: String,
+        local_addr: String,
+        remote_ip: String,
         remote_port: u32,
     ) -> anyhow::Result<Self> {
         let mut config = Config::default();
@@ -92,7 +92,7 @@ impl PortForwarder {
     }
 
     pub async fn local_forward(&mut self) -> anyhow::Result<()> {
-        let listener = TcpListener::bind(self.local_addr).await?;
+        let listener = TcpListener::bind(self.local_addr.as_str()).await?;
         loop {
             let (mut inbound, peer) = match listener.accept().await {
                 Ok(x) => x,
@@ -105,7 +105,7 @@ impl PortForwarder {
             let orig_addr = peer.ip().to_string();
             let chan = self
                 .handle
-                .channel_open_direct_tcpip(self.remote_ip, self.remote_port, orig_addr, orig_port)
+                .channel_open_direct_tcpip(self.remote_ip.as_str(), self.remote_port, orig_addr, orig_port)
                 .await?;
             let mut ch_stream = chan.into_stream();
 
@@ -116,15 +116,14 @@ impl PortForwarder {
     }
 
     pub async fn remote_forward(&mut self) -> anyhow::Result<()> {
-        let port = self
+        let _ = self
             .handle
-            .tcpip_forward(self.remote_ip, self.remote_port)
+            .tcpip_forward(self.remote_ip.as_str(), self.remote_port)
             .await?;
-        dbg!(port);
 
         tokio::signal::ctrl_c().await?;
         self.handle
-            .cancel_tcpip_forward(self.remote_ip, self.remote_port)
+            .cancel_tcpip_forward(self.remote_ip.as_str(), self.remote_port)
             .await?;
         self.handle
             .disconnect(russh::Disconnect::ByApplication, "bye", "")

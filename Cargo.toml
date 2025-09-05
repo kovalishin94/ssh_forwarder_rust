@@ -7,3 +7,4 @@ edition = "2024"
 tokio = { version = "1", features = ["full"] }
 russh = "0.54"
 anyhow = "1"
+clap = { version = "4.0", features = ["derive"] }
